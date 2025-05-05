@@ -3,7 +3,6 @@
 -- Date: 2025-05-05
 -- Description: Crea la tabla inicial de usuarios
 
--- Garantiza idempotencia
 DO $$
 BEGIN
     IF NOT EXISTS (

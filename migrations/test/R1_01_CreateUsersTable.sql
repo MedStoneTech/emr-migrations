@@ -3,7 +3,6 @@
 -- Date: 2025-05-05
 -- Description: Rollback para la creación de la tabla de usuarios
 
--- Garantiza idempotencia al eliminar la tabla de usuarios
 DO $$
 BEGIN
     IF EXISTS (
