@@ -20,7 +20,7 @@ jobs:
         run: |
           for file in $(find . -name "*.sql"); do
             echo "Executing syntax validation of $file..."
-            cat "$file" | PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "\i" || exit 1
+            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" || exit 1
           done
 
       - name: Check for matching V/R files
