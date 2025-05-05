@@ -38,7 +38,7 @@ jobs:
         if: failure()
         with:
           status: failure
-          fields: repo,workflow,job,commit,message
+          fields: repo,workflow,commit
           text: "Validation failed for ${{ github.event.pull_request.number }}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
