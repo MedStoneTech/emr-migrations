@@ -1,0 +1,44 @@
+name: Validate SQL Files
+
+on:
+  pull_request:
+    paths:
+      - "**.sql"
+
+jobs:
+  validate-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup PostgreSQL
+        run: |
+          docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:14
+          sleep 5
+
+      - name: Validate SQL syntax
+        run: |
+          for file in $(find . -name "*.sql"); do
+            echo "Executing syntax validation of $file..."
+            cat "$file" | PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "\i" || exit 1
+          done
+
+      - name: Check for matching V/R files
+        run: |
+          for vfile in $(find . -name "V*.sql"); do
+            rfile="${vfile/V/R}"
+            if [ ! -f "$rfile" ]; then
+              echo "Error: rollback file missing for $vfile"
+              exit 1
+            fi
+          done
+
+      - name: Notify Slack on Failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          fields: repo,workflow,job,commit,message
+          text: "[EMR MIGRATION] Validation failed for ${{ github.event.pull_request.number }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

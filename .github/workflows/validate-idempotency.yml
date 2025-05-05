@@ -1,0 +1,40 @@
+name: Validate Idempotency
+
+on:
+  pull_request:
+    paths:
+      - "**.sql"
+
+jobs:
+  validate-idempotency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up PostgreSQL
+        run: |
+          docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:14
+          sleep 5  # Wait for PostgreSQL to start
+
+      - name: Run migration scripts twice for idempotency check
+        run: |
+          # Check only forward migration scripts (V*.sql)
+          for file in $(find . -name "V*.sql"); do
+            echo "Testing idempotency for $file..."
+            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" || exit 1
+            
+            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" || { 
+              echo "Error: $file is not idempotent"; 
+              exit 1; 
+            }
+          done
+
+      - name: Notify Slack on Failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          fields: repo,workflow,job,commit,message
+          text: "Idempotency test failed for ${{ github.event.pull_request.number }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
