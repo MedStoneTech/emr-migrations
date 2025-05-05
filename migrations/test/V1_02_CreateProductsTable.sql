@@ -1,8 +1,3 @@
--- Migration: V1_02_CreateProductsTable
--- Author: TestUser
--- Date: 2025-05-06
--- Description: Crea la tabla de productos
-
 DO $$
 BEGIN
     IF NOT EXISTS (

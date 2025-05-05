@@ -1,0 +1,39 @@
+{
+  "name": "emr-migrations",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "check-node-version": "node -e \"const fs = require('fs'); const nvmVersion = fs.readFileSync('.nvmrc', 'utf8').trim(); const currentVersion = process.version.slice(1); console.log('Current Node version: ' + currentVersion + ', Required version: ' + nvmVersion); if (!currentVersion.startsWith(nvmVersion.split('.')[0])) { console.error('\\x1b[31mERROR: Node version mismatch! Make sure to run nvm use first.\\x1b[0m'); process.exit(1); }\"",
+    "dev": "yarn check-node-version && vite",
+    "build": "yarn check-node-version && tsc -b && vite build",
+    "lint": "yarn check-node-version && eslint .",
+    "preview": "yarn check-node-version && vite preview"
+  },
+  "dependencies": {
+    "@auth0/auth0-react": "^2.3.0",
+    "@mantine/core": "^8.0.0",
+    "@mantine/hooks": "^8.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.3",
+    "@vitejs/plugin-react": "^4.4.1",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "postcss": "^8.5.3",
+    "postcss-preset-mantine": "^1.17.0",
+    "postcss-simple-vars": "^7.0.1",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.30.1",
+    "vite": "^6.3.5"
+  },
+  "engines": {
+    "node": "20.11.1"
+  }
+}

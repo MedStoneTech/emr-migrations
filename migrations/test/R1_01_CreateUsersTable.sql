@@ -1,8 +1,3 @@
--- Migration: R1_01_CreateUsersTable
--- Author: TestUser
--- Date: 2025-05-05
--- Description: Rollback para la creación de la tabla de usuarios
-
 DO $$
 BEGIN
     IF EXISTS (

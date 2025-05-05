@@ -1,8 +1,3 @@
--- Migration: V1_01_CreateUsersTable
--- Author: TestUser
--- Date: 2025-05-05
--- Description: Crea la tabla inicial de usuarios
-
 DO $$
 BEGIN
     IF NOT EXISTS (
