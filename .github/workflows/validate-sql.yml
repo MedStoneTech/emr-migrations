@@ -17,28 +17,87 @@ jobs:
           sleep 5
 
       - name: Validate SQL syntax
+        id: syntax
         run: |
+          error_log=""
           for file in $(find . -name "*.sql"); do
             echo "Executing syntax validation of $file..."
-            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" || exit 1
+            output=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" 2>&1) || {
+              error_log="${error_log}• Error in file $file:\n\`\`\`\n${output}\n\`\`\`\n"
+              echo "::error::SQL validation failed for $file"
+              exit_code=1
+            }
           done
 
+          error_log="${error_log:-No specific error details available.}"
+          echo "error_log<<EOF" >> $GITHUB_ENV
+          echo "$error_log" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          exit ${exit_code:-0}
+        continue-on-error: true
+
       - name: Check for matching V/R files
+        id: matching
         run: |
+          error_log=""
           for vfile in $(find . -name "V*.sql"); do
             rfile="${vfile/V/R}"
             if [ ! -f "$rfile" ]; then
-              echo "Error: rollback file missing for $vfile"
-              exit 1
+              error_log="${error_log}• Missing rollback file for $vfile\n"
+              echo "::error::Rollback file missing for $vfile"
+              exit_code=1
             fi
           done
+
+          if [ -n "$error_log" ]; then
+            echo "error_log<<EOF" >> $GITHUB_ENV
+            echo "$error_log" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+
+          exit ${exit_code:-0}
+        continue-on-error: true
+
+      - name: Fail if any validation failed
+        if: steps.syntax.outcome == 'failure' || steps.matching.outcome == 'failure'
+        run: exit 1
 
       - name: Notify Slack on Failure
         uses: 8398a7/action-slack@v3
         if: failure()
         with:
-          status: failure
-          fields: repo,workflow,job,commit,message
-          text: "Validation failed for ${{ github.event.pull_request.number }}"
+          status: custom
+          fields: ""
+          custom_payload: |
+            {
+              "text": "🚫 *SQL validation failed*",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Pull Request",
+                    "value": "<https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>",
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow",
+                    "value": "${{ github.workflow }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Author",
+                    "value": "@${{ github.event.pull_request.user.login }}",
+                    "short": true
+                  }
+                ],
+                "text": "*Error details:*\n${{ env.error_log }}"
+              }]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

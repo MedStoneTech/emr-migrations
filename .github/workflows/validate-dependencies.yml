@@ -29,8 +29,35 @@ jobs:
         uses: 8398a7/action-slack@v3
         if: failure()
         with:
-          status: failure
-          fields: repo,workflow,job,commit,message
-          text: "Dependencies validation failed for ${{ github.event.pull_request.number }}"
+          status: custom
+          fields: ""
+          custom_payload: |
+            {
+              "text": "🔗 *Dependencies validation failed for pull request #${{ github.event.pull_request.number }}*",
+              "attachments": [{
+                "color": "danger",
+                 "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Pull Request",
+                    "value": "<https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>",
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow",
+                    "value": "${{ github.workflow }}",
+                    "short": true
+                  },
+                  {
+                    "title": "*Author*",
+                    "value": "@${{ github.event.pull_request.user.login }}",
+                    "short": true
+                  }
+                ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
