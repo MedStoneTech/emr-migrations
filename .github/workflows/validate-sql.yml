@@ -39,6 +39,6 @@ jobs:
         with:
           status: failure
           fields: repo,workflow,job,commit,message
-          text: "[EMR MIGRATION] Validation failed for ${{ github.event.pull_request.number }}"
+          text: "Validation failed for ${{ github.event.pull_request.number }}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
