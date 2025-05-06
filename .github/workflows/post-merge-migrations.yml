@@ -46,7 +46,17 @@ jobs:
       - name: Get changed SQL files
         id: changed-files
         run: |
-          SQL_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.sql$' || echo "")
+          echo "Checking merged PR commit range..."
+          echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+
+          SQL_FILES=$(git fetch origin ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} && \
+                     git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | \
+                     grep '\.sql$' || echo "")
+
+          echo "Found SQL files:"
+          echo "$SQL_FILES"
+
           echo "SQL_FILES<<EOF" >> $GITHUB_ENV
           echo "$SQL_FILES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
