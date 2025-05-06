@@ -1,0 +1,71 @@
+name: Post Merge Migrations
+
+on:
+  pull_request:
+    types: [closed]
+    paths:
+      - "**/*.sql"
+
+jobs:
+  register_migrations:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get changed SQL files
+        id: changed-files
+        run: |
+          SQL_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.sql$' || echo "")
+          echo "SQL_FILES<<EOF" >> $GITHUB_ENV
+          echo "$SQL_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Process migrations and write to DynamoDB
+        run: |
+          echo "$SQL_FILES" | while read -r file; do
+            if [ -z "$file" ]; then
+              continue
+            fi
+            filename=$(basename "$file" .sql)
+            service=$(dirname "$file" | xargs basename)
+            createdBy="${{ github.event.pull_request.user.login }}"
+            createdAt=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+            echo "Creating migration record for: $filename of service: $service"
+
+            aws dynamodb put-item \
+              --table-name migrations \
+              --item "{
+                \"name\": {\"S\": \"$filename\"},
+                \"service\": {\"S\": \"$service\"},
+                \"createdAt\": {\"S\": \"$createdAt\"},
+                \"createdBy\": {\"S\": \"$createdBy\"},
+                \"executedBy\": {\"NULL\": true}
+              }"
+          done
