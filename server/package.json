@@ -3,7 +3,9 @@
   "packageManager": "yarn@3.6.4",
   "scripts": {
     "check-node-version": "node -e \"const fs = require('fs'); const nvmVersion = fs.readFileSync('.nvmrc', 'utf8').trim(); const currentVersion = process.version.slice(1); console.log('Current Node version: ' + currentVersion + ', Required version: ' + nvmVersion); if (!currentVersion.startsWith(nvmVersion.split('.')[0])) { console.error('\\x1b[31mERROR: Node version mismatch! Make sure to run nvm use first.\\x1b[0m'); process.exit(1); }\"",
-    "dev": "yarn check-node-version && nodemon --exec \"npx ts-node\" index.ts"
+    "dev": "yarn check-node-version && nodemon --exec \"npx ts-node\" index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.803.0",
