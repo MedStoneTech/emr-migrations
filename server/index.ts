@@ -24,5 +24,5 @@ export const docClient = DynamoDBDocumentClient.from(dynamoClient);
 app.use("/api/migrations", migrationsRouter);
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`EMR Migrations server running on port ${PORT}`);
 });
