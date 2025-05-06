@@ -17,17 +17,41 @@ jobs:
           sleep 5  # Wait for PostgreSQL to start
 
       - name: Run migration scripts twice for idempotency check
+        id: idempotency
         run: |
-          # Check only forward migration scripts (V*.sql)
+          error_log=""
           for file in $(find . -name "V*.sql"); do
             echo "Testing idempotency for $file..."
-            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" || exit 1
             
-            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" || { 
-              echo "Error: $file is not idempotent"; 
-              exit 1; 
+            # First execution
+            output1=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" 2>&1) || {
+              error_log="Error in ${file}: ${output1}"
+              # Simplify and clean the error message
+              error_log=$(echo "$error_log" | tr '\n' ' ' | sed 's/"/'"'"'/g')
+              echo "error_log=${error_log}" >> $GITHUB_ENV
+              exit_code=1
+              continue
             }
+            
+            # Second execution
+            output2=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" 2>&1) || { 
+              error_log="Idempotency error in ${file}: ${output2}"
+              # Simplify and clean the error message
+              error_log=$(echo "$error_log" | tr '\n' ' ' | sed 's/"/'"'"'/g')
+              echo "error_log=${error_log}" >> $GITHUB_ENV
+              exit_code=1
+              continue
+            }
+            
+            echo "✅ $file is idempotent"
           done
+
+          if [ -z "$error_log" ]; then
+            echo "error_log=No errors found" >> $GITHUB_ENV
+          fi
+
+          exit ${exit_code:-0}
+        continue-on-error: false
 
       - name: Notify Slack on Failure
         uses: 8398a7/action-slack@v3
@@ -40,7 +64,7 @@ jobs:
               "text": "🔄 *Idempotency validation failed for pull request #${{ github.event.pull_request.number }}*",
               "attachments": [{
                 "color": "danger",
-                 "fields": [
+                "fields": [
                   {
                     "title": "Repository",
                     "value": "${{ github.repository }}",
@@ -52,16 +76,12 @@ jobs:
                     "short": true
                   },
                   {
-                    "title": "Workflow",
-                    "value": "${{ github.workflow }}",
-                    "short": true
-                  },
-                  {
-                    "title": "*Author*",
+                    "title": "Author",
                     "value": "@${{ github.event.pull_request.user.login }}",
                     "short": true
                   }
-                ]
+                ],
+                "text": "*Error Details:*\n${{ env.error_log }}"
               }]
             }
         env:
