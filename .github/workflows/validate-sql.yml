@@ -22,17 +22,22 @@ jobs:
           error_log=""
           for file in $(find . -name "*.sql"); do
             echo "Executing syntax validation of $file..."
-            output=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file" 2>&1) || {
-              error_log="${error_log}• Error in file $file:\n\`\`\`\n${output}\n\`\`\`\n"
-              echo "::error::SQL validation failed for $file"
+            output=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "\i $file" 2>&1) || {
+              # Simplify error message and clean special characters
+              cleaned_output=$(echo "$output" | tr '\n' ' ' | sed 's/"/'"'"'/g')
+              error_log="${error_log}Error in ${file}: ${cleaned_output}. "
+              
+              # Create a more specific error for GitHub annotations
+              error_line=$(echo "$output" | grep -o "line [0-9]*" | head -1 || echo "unknown line")
+              error_msg=$(echo "$output" | grep -o "ERROR:.*" | head -1 || echo "Syntax error")
+              echo "::error file=${file},${error_line}::${error_msg}"
               exit_code=1
             }
           done
 
-          error_log="${error_log:-No specific error details available.}"
-          echo "error_log<<EOF" >> $GITHUB_ENV
-          echo "$error_log" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          if [ -n "$error_log" ]; then
+            echo "error_log=${error_log}" >> $GITHUB_ENV
+          fi
 
           exit ${exit_code:-0}
         continue-on-error: true
@@ -44,16 +49,14 @@ jobs:
           for vfile in $(find . -name "V*.sql"); do
             rfile="${vfile/V/R}"
             if [ ! -f "$rfile" ]; then
-              error_log="${error_log}• Missing rollback file for $vfile\n"
-              echo "::error::Rollback file missing for $vfile"
+              error_log="${error_log}Missing rollback file for ${vfile}. "
+              echo "::error file=${vfile}::Missing rollback file (${rfile})"
               exit_code=1
             fi
           done
 
           if [ -n "$error_log" ]; then
-            echo "error_log<<EOF" >> $GITHUB_ENV
-            echo "$error_log" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+            echo "error_log_matching=${error_log}" >> $GITHUB_ENV
           fi
 
           exit ${exit_code:-0}
@@ -61,7 +64,17 @@ jobs:
 
       - name: Fail if any validation failed
         if: steps.syntax.outcome == 'failure' || steps.matching.outcome == 'failure'
-        run: exit 1
+        run: |
+          echo "SQL validation failed!"
+          if [ "${{ steps.syntax.outcome }}" == "failure" ]; then
+            echo "Syntax errors:"
+            echo "${{ env.error_log }}"
+          fi
+          if [ "${{ steps.matching.outcome }}" == "failure" ]; then
+            echo "Missing rollback files:"
+            echo "${{ env.error_log_matching }}"
+          fi
+          exit 1
 
       - name: Notify Slack on Failure
         uses: 8398a7/action-slack@v3
@@ -96,7 +109,7 @@ jobs:
                     "short": true
                   }
                 ],
-                "text": "*Error details:*\n${{ env.error_log }}"
+                "text": "*Error details:*\n${{ env.error_log }}${{ env.error_log_matching }}"
               }]
             }
         env:
