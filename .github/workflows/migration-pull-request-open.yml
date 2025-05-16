@@ -1,0 +1,91 @@
+name: Migration Pull Request Open
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - dev
+      - stage
+      - demo
+      - galveston
+      - tyler
+      - longview
+    paths:
+      - "**.sql"
+
+jobs:
+  alert-sql-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get changed SQL files
+        id: changed-files
+        run: |
+          echo "Checking PR commit range..."
+          echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+
+          SQL_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | \
+                      grep '\.sql$' || echo "")
+
+          # Format SQL files list for Slack message
+          if [ -n "$SQL_FILES" ]; then
+            SQL_FILES_FORMATTED=""
+            while IFS= read -r file; do
+              service=$(dirname "$file" | xargs basename)
+              filename=$(basename "$file")
+              SQL_FILES_FORMATTED="${SQL_FILES_FORMATTED}• ${service}/${filename}\n"
+            done <<< "$SQL_FILES"
+            
+            echo "SQL_FILES_FORMATTED<<EOF" >> $GITHUB_ENV
+            echo "$SQL_FILES_FORMATTED" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            
+            echo "HAS_SQL_FILES=true" >> $GITHUB_ENV
+          else
+            echo "No SQL files changed in this PR."
+            echo "HAS_SQL_FILES=false" >> $GITHUB_ENV
+          fi
+
+      - name: Notify Slack about SQL Changes
+        uses: 8398a7/action-slack@v3
+        if: env.HAS_SQL_FILES == 'true'
+        with:
+          status: custom
+          fields: ""
+          custom_payload: |
+            {
+              "text": "🔔 *Migration Pull Request Opened*",
+              "attachments": [{
+                "color": "#36a64f",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Pull Request",
+                    "value": "<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}>",
+                    "short": true
+                  },
+                  {
+                    "title": "Target Environment",
+                    "value": "${{ github.event.pull_request.base.ref }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Author",
+                    "value": "@${{ github.event.pull_request.user.login }}",
+                    "short": true
+                  }
+                ],
+                "text": "*The following SQL migrations will be executed after merge:*\n${{ env.SQL_FILES_FORMATTED }}"
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
