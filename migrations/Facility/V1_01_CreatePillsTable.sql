@@ -1,8 +1,8 @@
 -- Check if the table doesn't already exist
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'medicines') THEN
-        CREATE TABLE medicines (
+    IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'pills') THEN
+        CREATE TABLE pills (
             id SERIAL PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
             concentration VARCHAR(50),
@@ -14,6 +14,6 @@ BEGIN
         );
 
         -- Create index on commonly searched fields
-        CREATE INDEX idx_medicines_name ON medicines(name);
+        CREATE INDEX pills_name ON pills(name);
     END IF;
 END $$;
