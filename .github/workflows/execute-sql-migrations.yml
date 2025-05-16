@@ -1,0 +1,337 @@
+name: Execute SQL Migrations
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - dev
+      - stage
+      - demo
+      - galveston
+      - tyler
+      - longview
+    paths:
+      - "**/*.sql"
+
+jobs:
+  execute_migrations:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install or update AWS CLI
+        run: |
+          if aws --version &> /dev/null; then
+            echo "AWS CLI is already installed, using existing installation"
+          else
+            echo "Installing AWS CLI..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install UUID runtime and PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y uuid-runtime postgresql-client
+
+      - name: Set environment variables based on target branch
+        run: |
+          TARGET_ENV="${{ github.event.pull_request.base.ref }}"
+          echo "TARGET_ENV=$TARGET_ENV" >> $GITHUB_ENV
+
+          # Set environment-specific variables from GitHub secrets
+          case "$TARGET_ENV" in
+            dev)
+              echo "BASTION_HOST=${{ secrets.DEV_BASTION_HOST }}" >> $GITHUB_ENV
+              echo "BASTION_USER=${{ secrets.DEV_BASTION_USER }}" >> $GITHUB_ENV
+              echo "DB_HOST=${{ secrets.DEV_DB_HOST }}" >> $GITHUB_ENV
+              echo "DB_USER=${{ secrets.DEV_DB_USER }}" >> $GITHUB_ENV
+              echo "DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "${{ secrets.DEV_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+              ;;
+            stage)
+              echo "BASTION_HOST=${{ secrets.STAGE_BASTION_HOST }}" >> $GITHUB_ENV
+              echo "BASTION_USER=${{ secrets.STAGE_BASTION_USER }}" >> $GITHUB_ENV
+              echo "DB_HOST=${{ secrets.STAGE_DB_HOST }}" >> $GITHUB_ENV
+              echo "DB_USER=${{ secrets.STAGE_DB_USER }}" >> $GITHUB_ENV
+              echo "DB_PASSWORD=${{ secrets.STAGE_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "${{ secrets.STAGE_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+              ;;
+            demo)
+              echo "BASTION_HOST=${{ secrets.DEMO_BASTION_HOST }}" >> $GITHUB_ENV
+              echo "BASTION_USER=${{ secrets.DEMO_BASTION_USER }}" >> $GITHUB_ENV
+              echo "DB_HOST=${{ secrets.DEMO_DB_HOST }}" >> $GITHUB_ENV
+              echo "DB_USER=${{ secrets.DEMO_DB_USER }}" >> $GITHUB_ENV
+              echo "DB_PASSWORD=${{ secrets.DEMO_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "${{ secrets.DEMO_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+              ;;
+            galveston)
+              echo "BASTION_HOST=${{ secrets.GALVESTON_BASTION_HOST }}" >> $GITHUB_ENV
+              echo "BASTION_USER=${{ secrets.GALVESTON_BASTION_USER }}" >> $GITHUB_ENV
+              echo "DB_HOST=${{ secrets.GALVESTON_DB_HOST }}" >> $GITHUB_ENV
+              echo "DB_USER=${{ secrets.GALVESTON_DB_USER }}" >> $GITHUB_ENV
+              echo "DB_PASSWORD=${{ secrets.GALVESTON_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "${{ secrets.GALVESTON_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+              ;;
+            tyler)
+              echo "BASTION_HOST=${{ secrets.TYLER_BASTION_HOST }}" >> $GITHUB_ENV
+              echo "BASTION_USER=${{ secrets.TYLER_BASTION_USER }}" >> $GITHUB_ENV
+              echo "DB_HOST=${{ secrets.TYLER_DB_HOST }}" >> $GITHUB_ENV
+              echo "DB_USER=${{ secrets.TYLER_DB_USER }}" >> $GITHUB_ENV
+              echo "DB_PASSWORD=${{ secrets.TYLER_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "${{ secrets.TYLER_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+              ;;
+            longview)
+              echo "BASTION_HOST=${{ secrets.LONGVIEW_BASTION_HOST }}" >> $GITHUB_ENV
+              echo "BASTION_USER=${{ secrets.LONGVIEW_BASTION_USER }}" >> $GITHUB_ENV
+              echo "DB_HOST=${{ secrets.LONGVIEW_DB_HOST }}" >> $GITHUB_ENV
+              echo "DB_USER=${{ secrets.LONGVIEW_DB_USER }}" >> $GITHUB_ENV
+              echo "DB_PASSWORD=${{ secrets.LONGVIEW_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "${{ secrets.LONGVIEW_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+              ;;
+            *)
+              echo "Error: Unsupported environment $TARGET_ENV"
+              exit 1
+              ;;
+          esac
+
+          chmod 600 /tmp/bastion.pem
+          echo "PEM_KEY=/tmp/bastion.pem" >> $GITHUB_ENV
+
+      - name: Get changed SQL files
+        id: changed-files
+        run: |
+          echo "Checking merged PR commit range..."
+          echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+
+          SQL_FILES=$(git fetch origin ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} && \
+                     git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | \
+                     grep '\.sql$' || echo "")
+
+          echo "Found SQL files:"
+          echo "$SQL_FILES"
+
+          echo "SQL_FILES<<EOF" >> $GITHUB_ENV
+          echo "$SQL_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Execute migrations and update DynamoDB
+        run: |
+          LOCAL_PORT=5432
+
+          # Kill any process using the port (just in case)
+          lsof -ti:${LOCAL_PORT} | xargs kill -9 2>/dev/null || true
+
+          # Set up SSH tunnel
+          echo "Setting up SSH tunnel to bastion..."
+          ssh -i "$PEM_KEY" -f -N -L ${LOCAL_PORT}:${DB_HOST}:5432 ${BASTION_USER}@${BASTION_HOST}
+          sleep 2
+
+          if ! lsof -i:${LOCAL_PORT} >/dev/null 2>&1; then
+            echo "Error: Could not establish SSH tunnel"
+            exit 1
+          fi
+
+          echo "SSH tunnel established successfully."
+
+          # Process each SQL file, execute it, and update in DynamoDB
+          echo "$SQL_FILES" | while read -r file; do
+            if [ -z "$file" ]; then
+              continue
+            fi
+            
+            # Get database name from directory
+            db_name=$(dirname "$file" | xargs basename)
+            filename=$(basename "$file" .sql)
+            service=$(dirname "$file" | xargs basename)
+            executedBy="${{ github.actor }}"
+            executedAt=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            
+            # Determine file type based on prefix
+            file_type="NORMAL"
+            if [[ "$filename" == R* ]]; then
+              file_type="ROLLBACK"
+              echo "Skipping ROLLBACK migration: $filename (rollbacks will only be executed if needed)"
+              continue # Skip execution of rollback files
+            elif [[ "$filename" == V* ]]; then
+              file_type="VERSION"
+              echo "Identified VERSION migration: $filename"
+            else
+              echo "Identified standard migration: $filename"
+            fi
+            
+            echo "Executing migration: $filename (Type: $file_type) in database: $db_name"
+            
+            # Execute SQL file
+            PGPASSWORD="${DB_PASSWORD}" psql \
+              -h localhost \
+              -p ${LOCAL_PORT} \
+              -U ${DB_USER} \
+              -d ${db_name} \
+              -v ON_ERROR_STOP=1 \
+              -f "$file" || {
+                echo "Error executing SQL file: $file"
+                # Find matching rollback files if this was a VERSION file
+                if [[ "$file_type" == "VERSION" ]]; then
+                  version_num=$(echo "$filename" | sed -n 's/^V\([0-9]*\)_.*$/\1/p')
+                  if [ ! -z "$version_num" ]; then
+                    possible_rollbacks=$(find $(dirname "$file") -name "R${version_num}_*.sql" | sort)
+                    if [ ! -z "$possible_rollbacks" ]; then
+                      echo "VERSION migration failed. The following ROLLBACK files may need to be executed manually:"
+                      echo "$possible_rollbacks"
+                    fi
+                  fi
+                fi
+                exit 1
+              }
+              
+            echo "SQL file executed successfully. Updating DynamoDB record..."
+            
+            # Find existing migration ID using scan and filter
+            EXISTING_ID=$(aws dynamodb scan \
+              --table-name migrations \
+              --filter-expression "name = :name AND service = :service" \
+              --expression-attribute-values '{":name": {"S": "'"$filename"'"}, ":service": {"S": "'"$service"'"}}' \
+              --query "Items[0].id.S" \
+              --output text)
+            
+            if [ -z "$EXISTING_ID" ] || [ "$EXISTING_ID" == "None" ]; then
+              echo "Warning: No existing record found for $filename in service $service. Creating a new record."
+              id=$(uuidgen)
+              createdBy="${{ github.event.pull_request.user.login }}"
+              createdAt=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              
+              aws dynamodb put-item \
+                --table-name migrations \
+                --item "{
+                  \"id\": {\"S\": \"$id\"},
+                  \"name\": {\"S\": \"$filename\"},
+                  \"service\": {\"S\": \"$service\"},
+                  \"type\": {\"S\": \"$file_type\"},
+                  \"createdAt\": {\"S\": \"$createdAt\"},
+                  \"createdBy\": {\"S\": \"$createdBy\"},
+                  \"executedAt\": {\"S\": \"$executedAt\"},
+                  \"executedBy\": {\"S\": \"$executedBy\"},
+                  \"environment\": {\"S\": \"$TARGET_ENV\"}
+                }"
+            else
+              echo "Updating existing record with ID: $EXISTING_ID"
+              
+              aws dynamodb update-item \
+                --table-name migrations \
+                --key "{
+                  \"id\": {\"S\": \"$EXISTING_ID\"}
+                }" \
+                --update-expression "SET executedAt = :executedAt, executedBy = :executedBy, environment = :environment, type = :type" \
+                --expression-attribute-values "{
+                  \":executedAt\": {\"S\": \"$executedAt\"},
+                  \":executedBy\": {\"S\": \"$executedBy\"},
+                  \":environment\": {\"S\": \"$TARGET_ENV\"},
+                  \":type\": {\"S\": \"$file_type\"}
+                }"
+            fi
+            
+            echo "DynamoDB record updated."
+          done
+
+          # Close SSH tunnel
+          echo "Closing SSH tunnel..."
+          lsof -ti:${LOCAL_PORT} | xargs kill -9 2>/dev/null || true
+
+      - name: Notify Slack on Success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: custom
+          fields: ""
+          custom_payload: |
+            {
+              "text": "✅ *SQL migrations executed successfully*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Pull Request",
+                    "value": "<https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>",
+                    "short": true
+                  },
+                  {
+                    "title": "Environment",
+                    "value": "${{ env.TARGET_ENV }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Executed By",
+                    "value": "@${{ github.actor }}",
+                    "short": true
+                  }
+                ],
+                "text": "*SQL migrations have been applied to the ${{ env.TARGET_ENV }} environment*"
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on Failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: custom
+          fields: ""
+          custom_payload: |
+            {
+              "text": "❌ *SQL migrations execution failed*",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Pull Request",
+                    "value": "<https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>",
+                    "short": true
+                  },
+                  {
+                    "title": "Environment",
+                    "value": "${{ env.TARGET_ENV }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Attempted By",
+                    "value": "@${{ github.actor }}",
+                    "short": true
+                  }
+                ],
+                "text": "*There was an error executing the SQL migrations in the ${{ env.TARGET_ENV }} environment*\nPlease check the workflow logs for more details."
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
