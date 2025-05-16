@@ -244,7 +244,10 @@ jobs:
                 --key "{
                   \"id\": {\"S\": \"$EXISTING_ID\"}
                 }" \
-                --update-expression "SET executedAt = :executedAt, executedBy = :executedBy, environment = :environment, type = :type" \
+                --update-expression "SET executedAt = :executedAt, executedBy = :executedBy, environment = :environment, #t = :type" \
+                --expression-attribute-names "{
+                  \"#t\": \"type\"
+                }" \
                 --expression-attribute-values "{
                   \":executedAt\": {\"S\": \"$executedAt\"},
                   \":executedBy\": {\"S\": \"$executedBy\"},
