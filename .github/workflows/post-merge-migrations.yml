@@ -3,6 +3,8 @@ name: Post Merge Migrations
 on:
   pull_request:
     types: [closed]
+    branches:
+      - main
     paths:
       - "**/*.sql"
 

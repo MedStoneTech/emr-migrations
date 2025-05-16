@@ -211,7 +211,8 @@ jobs:
             # Find existing migration ID using scan and filter
             EXISTING_ID=$(aws dynamodb scan \
               --table-name migrations \
-              --filter-expression "name = :name AND service = :service" \
+              --filter-expression "#n = :name AND service = :service" \
+              --expression-attribute-names '{"#n": "name"}' \
               --expression-attribute-values '{":name": {"S": "'"$filename"'"}, ":service": {"S": "'"$service"'"}}' \
               --query "Items[0].id.S" \
               --output text)
