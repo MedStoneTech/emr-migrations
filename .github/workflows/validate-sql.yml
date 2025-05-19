@@ -11,26 +11,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup PostgreSQL
+      - name: Install pgsanity
         run: |
-          docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:14
-          sleep 5
+          # Install PostgreSQL client tools (for ecpg needed by pgsanity)
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client libecpg-dev
+
+          # Install pgsanity
+          pip install pgsanity
+          echo "pgsanity installed successfully"
 
       - name: Validate SQL syntax
         id: syntax
         run: |
           error_log=""
+          exit_code=0
           for file in $(find . -name "*.sql"); do
-            echo "Executing syntax validation of $file..."
-            output=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "\i $file" 2>&1) || {
+            echo "Validating syntax of $file..."
+            output=$(pgsanity "$file" 2>&1) || {
               # Simplify error message and clean special characters
               cleaned_output=$(echo "$output" | tr '\n' ' ' | sed 's/"/'"'"'/g')
               error_log="${error_log}Error in ${file}: ${cleaned_output}. "
               
-              # Create a more specific error for GitHub annotations
-              error_line=$(echo "$output" | grep -o "line [0-9]*" | head -1 || echo "unknown line")
-              error_msg=$(echo "$output" | grep -o "ERROR:.*" | head -1 || echo "Syntax error")
-              echo "::error file=${file},${error_line}::${error_msg}"
+              # Extract line numbers and errors for GitHub annotations
+              while IFS= read -r line; do
+                if [[ $line =~ :[0-9]+: ]]; then
+                  line_num=$(echo "$line" | grep -o ':[0-9]\+:' | tr -d ':')
+                  error_msg=$(echo "$line" | sed "s/.*:[0-9]\+: //")
+                  echo "::error file=${file},line=${line_num}::${error_msg}"
+                fi
+              done <<< "$output"
+              
               exit_code=1
             }
           done
@@ -39,13 +50,14 @@ jobs:
             echo "error_log=${error_log}" >> $GITHUB_ENV
           fi
 
-          exit ${exit_code:-0}
+          exit ${exit_code}
         continue-on-error: true
 
       - name: Check for matching V/R files
         id: matching
         run: |
           error_log=""
+          exit_code=0
           for vfile in $(find . -name "V*.sql"); do
             rfile="${vfile/V/R}"
             if [ ! -f "$rfile" ]; then
@@ -59,7 +71,7 @@ jobs:
             echo "error_log_matching=${error_log}" >> $GITHUB_ENV
           fi
 
-          exit ${exit_code:-0}
+          exit ${exit_code}
         continue-on-error: true
 
       - name: Fail if any validation failed
