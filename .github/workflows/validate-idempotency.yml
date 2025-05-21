@@ -3,31 +3,131 @@ name: Validate Idempotency
 on:
   pull_request:
     paths:
-      - "**.sql"
+      - "**/*.sql"
 
 jobs:
   validate-idempotency:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      - name: Set up PostgreSQL
+      - name: Install or update AWS CLI
         run: |
-          docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:14
-          sleep 5  # Wait for PostgreSQL to start
+          if aws --version &> /dev/null; then
+            echo "AWS CLI is already installed, using existing installation"
+          else
+            echo "Installing AWS CLI..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+          fi
 
-      - name: Run migration scripts twice for idempotency check
-        id: idempotency
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install PostgreSQL client and required tools
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client uuid-runtime
+
+      - name: Set up Dev environment connection
         run: |
-          error_log=""
-          exit_code=0
+          # Set up Dev environment variables
+          echo "BASTION_HOST=${{ secrets.DEV_BASTION_HOST }}" >> $GITHUB_ENV
+          echo "BASTION_USER=${{ secrets.DEV_BASTION_USER }}" >> $GITHUB_ENV
+          echo "DB_HOST=${{ secrets.DEV_DB_HOST }}" >> $GITHUB_ENV
+          echo "DB_USER=${{ secrets.DEV_DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "${{ secrets.DEV_PEM_KEY }}" | base64 -d > /tmp/bastion.pem
+          chmod 600 /tmp/bastion.pem
+          echo "PEM_KEY=/tmp/bastion.pem" >> $GITHUB_ENV
 
-          for file in $(find . -name "V*.sql"); do
-            echo "Testing idempotency for $file..."
+      - name: Get changed SQL files
+        id: changed-files
+        run: |
+          echo "Checking PR commit range..."
+          echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+
+          SQL_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.sql$' || echo "")
+
+          echo "Found SQL files:"
+          echo "$SQL_FILES"
+
+          if [ -z "$SQL_FILES" ]; then
+            echo "No SQL files found in PR, skipping validation"
+            echo "SKIP_VALIDATION=true" >> $GITHUB_ENV
+          else
+            echo "SQL_FILES<<EOF" >> $GITHUB_ENV
+            echo "$SQL_FILES" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            echo "SKIP_VALIDATION=false" >> $GITHUB_ENV
+          fi
+
+      - name: Validate idempotency of SQL scripts
+        id: idempotency-check
+        if: env.SKIP_VALIDATION != 'true'
+        run: |
+          LOCAL_PORT=5432
+
+          # Initialize error tracking
+          echo "IDEMPOTENCY_FAILED=false" >> $GITHUB_ENV
+          echo "ERROR_MESSAGE=No errors found" >> $GITHUB_ENV
+
+          # Kill any process using the port (just in case)
+          lsof -ti:${LOCAL_PORT} | xargs kill -9 2>/dev/null || true
+
+          # Set up SSH tunnel
+          echo "Setting up SSH tunnel to bastion..."
+          # Add StrictHostKeyChecking=no to bypass host key verification
+          ssh -i "$PEM_KEY" -o StrictHostKeyChecking=no -f -N -L ${LOCAL_PORT}:${DB_HOST}:5432 ${BASTION_USER}@${BASTION_HOST}
+          sleep 2
+
+          if ! lsof -i:${LOCAL_PORT} >/dev/null 2>&1; then
+            echo "Error: Could not establish SSH tunnel"
+            echo "IDEMPOTENCY_FAILED=true" >> $GITHUB_ENV
+            echo "ERROR_MESSAGE=Could not establish SSH tunnel to database" >> $GITHUB_ENV
+            exit 1
+          fi
+
+          echo "SSH tunnel established successfully."
+
+          # Process each SQL file and test for idempotency
+          echo "$SQL_FILES" | while read -r file; do
+            if [ -z "$file" ]; then
+              continue
+            fi
+            
+            # Get database name from directory
+            db_name=$(dirname "$file" | xargs basename)
+            filename=$(basename "$file" .sql)
+            
+            # Skip rollback scripts for idempotency testing
+            if [[ "$filename" == R* ]]; then
+              echo "Skipping ROLLBACK file: $filename"
+              continue
+            fi
+
+            echo "Testing idempotency for $file on database: $db_name"
             
             # Create a temporary schema for this test
             schema_name="test_$(date +%s%N | md5sum | head -c 10)"
-            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE SCHEMA $schema_name;" || continue
+            PGPASSWORD="${DB_PASSWORD}" psql \
+              -h localhost \
+              -p ${LOCAL_PORT} \
+              -U ${DB_USER} \
+              -d ${db_name} \
+              -c "CREATE SCHEMA $schema_name;" || {
+                echo "Error creating schema in database $db_name"
+                echo "IDEMPOTENCY_FAILED=true" >> $GITHUB_ENV
+                error_msg="Could not create test schema in database $db_name"
+                echo "ERROR_MESSAGE=$error_msg" >> $GITHUB_ENV
+                continue
+              }
             
             # Create the wrapper script for first execution
             echo "BEGIN;" > /tmp/wrapped_script_1.sql
@@ -36,18 +136,30 @@ jobs:
             echo "COMMIT;" >> /tmp/wrapped_script_1.sql
             
             # First execution
-            output1=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/wrapped_script_1.sql 2>&1) || {
-              # Handle error in first execution
-              error_log="Error in ${file}: $(echo "$output1" | grep -E "ERROR:" | head -1)"
-              # Simplify and clean the error message
-              error_log=$(echo "$error_log" | tr '\n' ' ' | sed 's/"/'"'"'/g')
-              echo "error_log=${error_log}" >> $GITHUB_ENV
-              exit_code=1
-              
-              # Clean up and continue to next file
-              PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "DROP SCHEMA IF EXISTS $schema_name CASCADE;"
-              continue
-            }
+            output1=$(PGPASSWORD="${DB_PASSWORD}" psql \
+              -h localhost \
+              -p ${LOCAL_PORT} \
+              -U ${DB_USER} \
+              -d ${db_name} \
+              -v ON_ERROR_STOP=1 \
+              -f /tmp/wrapped_script_1.sql 2>&1) || {
+                # Handle error in first execution
+                error_msg="Error in ${file}: $(echo "$output1" | grep -E "ERROR:" | head -1)"
+                # Simplify and clean the error message
+                error_msg=$(echo "$error_msg" | tr '\n' ' ' | sed 's/"/'"'"'/g')
+                echo "Error in first execution: $error_msg"
+                echo "IDEMPOTENCY_FAILED=true" >> $GITHUB_ENV
+                echo "ERROR_MESSAGE=$error_msg" >> $GITHUB_ENV
+                
+                # Clean up and continue to next file
+                PGPASSWORD="${DB_PASSWORD}" psql \
+                  -h localhost \
+                  -p ${LOCAL_PORT} \
+                  -U ${DB_USER} \
+                  -d ${db_name} \
+                  -c "DROP SCHEMA IF EXISTS $schema_name CASCADE;"
+                continue
+              }
             
             # Create the wrapper script for second execution
             echo "BEGIN;" > /tmp/wrapped_script_2.sql
@@ -56,35 +168,65 @@ jobs:
             echo "COMMIT;" >> /tmp/wrapped_script_2.sql
             
             # Second execution
-            output2=$(PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/wrapped_script_2.sql 2>&1) || {
-              # Handle error in second execution
-              error_log="Idempotency error in ${file}: $(echo "$output2" | grep -E "ERROR:" | head -1)"
-              # Simplify and clean the error message
-              error_log=$(echo "$error_log" | tr '\n' ' ' | sed 's/"/'"'"'/g')
-              echo "error_log=${error_log}" >> $GITHUB_ENV
-              exit_code=1
-              
-              # Clean up and continue to next file
-              PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "DROP SCHEMA IF EXISTS $schema_name CASCADE;"
-              continue
-            }
+            output2=$(PGPASSWORD="${DB_PASSWORD}" psql \
+              -h localhost \
+              -p ${LOCAL_PORT} \
+              -U ${DB_USER} \
+              -d ${db_name} \
+              -v ON_ERROR_STOP=1 \
+              -f /tmp/wrapped_script_2.sql 2>&1) || {
+                # Handle error in second execution
+                error_msg="Idempotency error in ${file}: $(echo "$output2" | grep -E "ERROR:" | head -1)"
+                # Simplify and clean the error message
+                error_msg=$(echo "$error_msg" | tr '\n' ' ' | sed 's/"/'"'"'/g')
+                echo "Error in second execution: $error_msg"
+                echo "IDEMPOTENCY_FAILED=true" >> $GITHUB_ENV
+                echo "ERROR_MESSAGE=$error_msg" >> $GITHUB_ENV
+                
+                # Clean up and continue to next file
+                PGPASSWORD="${DB_PASSWORD}" psql \
+                  -h localhost \
+                  -p ${LOCAL_PORT} \
+                  -U ${DB_USER} \
+                  -d ${db_name} \
+                  -c "DROP SCHEMA IF EXISTS $schema_name CASCADE;"
+                continue
+              }
             
             # Clean up
-            PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "DROP SCHEMA IF EXISTS $schema_name CASCADE;"
+            PGPASSWORD="${DB_PASSWORD}" psql \
+              -h localhost \
+              -p ${LOCAL_PORT} \
+              -U ${DB_USER} \
+              -d ${db_name} \
+              -c "DROP SCHEMA IF EXISTS $schema_name CASCADE;"
             
             echo "✅ $file is idempotent"
           done
 
-          if [ -z "$error_log" ]; then
-            echo "error_log=No errors found" >> $GITHUB_ENV
-          fi
+          # Close SSH tunnel
+          echo "Closing SSH tunnel..."
+          lsof -ti:${LOCAL_PORT} | xargs kill -9 2>/dev/null || true
 
-          exit ${exit_code}
-        continue-on-error: false
+          if [ "$IDEMPOTENCY_FAILED" = "true" ]; then
+            echo "Idempotency validation failed. Check the error details."
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Check idempotency result
+        if: env.SKIP_VALIDATION != 'true'
+        run: |
+          if [ "$IDEMPOTENCY_FAILED" = "true" ]; then
+            echo "Idempotency validation failed. Error: $ERROR_MESSAGE"
+            exit 1
+          else
+            echo "All SQL files are idempotent!"
+          fi
 
       - name: Notify Slack on Failure
         uses: 8398a7/action-slack@v3
-        if: failure()
+        if: failure() || env.IDEMPOTENCY_FAILED == 'true'
         with:
           status: custom
           fields: ""
@@ -110,7 +252,7 @@ jobs:
                     "short": true
                   }
                 ],
-                "text": "*Error Details:*\n${{ env.error_log }}"
+                "text": "*Error Details:*\n${{ env.ERROR_MESSAGE }}"
               }]
             }
         env:
