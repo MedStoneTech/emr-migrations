@@ -30,14 +30,14 @@ jobs:
             PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE SCHEMA $schema_name;" || continue
             
             # Wrap the script execution in a transaction and set search_path
-            wrapper_script=$(cat <<EOF
+            wrapper_script=$(cat <<'EOFMARKER'
             BEGIN;
             SET search_path TO $schema_name;
             
             $(cat "$file")
             
             COMMIT;
-            EOF
+            EOFMARKER
             )
             
             # First execution
