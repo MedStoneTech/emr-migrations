@@ -504,7 +504,7 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D006Q001A005', 'anterior', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D006Q001A006', 'central', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D006Q001A007', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D006Q001A008', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D006Q001A008', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 
 -- D007 - Knee
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D007Q001A001', 'AC Joint', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
@@ -559,7 +559,7 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D012Q001A004', 'radiocarpal', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D012Q001A005', 'midcarpal', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D012Q001A006', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D012Q001A007', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D012Q001A007', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 
 -- D013 - Shoulder
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D013Q001A001', 'Shoulder', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
