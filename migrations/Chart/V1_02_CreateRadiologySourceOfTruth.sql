@@ -44,7 +44,7 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D004', 'Elbow', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D005', 'Hip', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D006', 'Knee', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', ƒ'Any', 'D007', 'MCP', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D007', 'MCP', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D008', 'PIP', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D009', 'Shoulder', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D010', 'Patella', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
