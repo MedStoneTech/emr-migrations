@@ -431,7 +431,7 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A013', 'Shaft Spiral', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A014', 'Shaft Segmental', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A015', 'Shaft Comminuted', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A016', "Shaft Monteggia's", NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A016', 'Shaft Monteggia''s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A017', 'Shaft Greenstick', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A018', 'Shaft Bent Bone', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A020', 'Distal', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
