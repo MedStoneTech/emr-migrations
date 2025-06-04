@@ -161,6 +161,12 @@ jobs:
               continue
             fi
             
+            # Verify if the file exists
+            if [ ! -f "$file" ]; then
+              echo "Warning: File $file does not exist. Skipping..."
+              continue
+            fi
+            
             # Get database name from directory
             db_name=$(dirname "$file" | xargs basename)
             filename=$(basename "$file" .sql)
