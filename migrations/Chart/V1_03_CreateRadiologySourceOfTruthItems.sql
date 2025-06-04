@@ -311,13 +311,13 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A018', 'Shaft Spiral', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A019', 'Shaft Segmental', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A020', 'Shaft Comminuted', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A021', 'Galeazzi\'s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A021', 'Galeazzi''s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A022', 'Greenstick', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A023', 'Bent Bone', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A025', 'Distal', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A026', 'Colles\'s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A027', 'Smith\'s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A028', 'Barton\'s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A026', 'Colles''s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A027', 'Smith''s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A028', 'Barton''s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A029', 'Distal Intra-articular', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A030', 'Distal Torus', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F015Q001A031', 'Distal Styloid', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
@@ -339,7 +339,7 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F016Q001A011', 'Vertical Through Spinal Canal', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F016Q001A012', 'Vertical Displaced', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F016Q001A013', 'Vertical Mild Displacement', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F016Q001A014', 'Vertical Galeazzi\'s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F016Q001A014', 'Vertical Galeazzi''s', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F016Q001A015', 'Vertical Severe Displacement', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 
 -- F017 - Scapula
@@ -408,13 +408,13 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F020Q001A002', 'Left', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F020Q001A003', 'Right', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F020Q001A004', 'Single', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F020Q001A005', 'Multiple', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F020Q001A005', 'Multiple', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 
 -- F021 - Sternum
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F021Q001A001', 'Sternum', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F021Q001A002', 'Body', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F021Q001A003', 'Manubrium', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F021Q001A004', 'Xiphoid', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F021Q001A004', 'Xiphoid', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 
 -- F022 - Ulna
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022Q001A001', 'Ulna', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
