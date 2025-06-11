@@ -29,8 +29,7 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F019', 'Tibia', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F020', 'Rib', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F021', 'Sternum', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022', 'Ulna', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
-ON CONFLICT ("AnswerCode") DO NOTHING;
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'F022', 'Ulna', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL);
 
 -- DISLOCATIONS (D001-D015)
 INSERT INTO public."ChartsSourceOfTruth" (
@@ -52,5 +51,4 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D012', 'TMJ', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D013', 'Wrist', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D014', 'CMC', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015', 'TMT', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
-ON CONFLICT ("AnswerCode") DO NOTHING;
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015', 'TMT', NULL, 'subsection-title', NOW(), NULL, NOW(), NULL, false, NULL, NULL);

@@ -601,5 +601,4 @@ INSERT INTO public."ChartsSourceOfTruth" (
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015Q001A011', '4th', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015Q001A012', '5th', NULL, 'cross-option', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
 (gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015Q001A013', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL),
-(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015Q001A014', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL)
-ON CONFLICT ("AnswerCode") DO NOTHING;
+(gen_random_uuid(), 'SHARED', 'SRAD', 'Any', 'D015Q001A014', NULL, NULL, 'input', NOW(), NULL, NOW(), NULL, false, NULL, NULL);
